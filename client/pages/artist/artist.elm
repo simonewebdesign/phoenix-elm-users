@@ -1,4 +1,4 @@
-module App where
+module Artist where
 
 import Debug
 import Html exposing (..)

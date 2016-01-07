@@ -5,6 +5,10 @@ defmodule MyApp.ArtistController do
 
   plug :scrub_params, "artist" when action in [:create, :update]
 
+  def index_html(conn, _params) do
+    render conn, "index.html"
+  end
+
   def index(conn, _params) do
     artists = Repo.all(Artist)
     render(conn, "index.json", artists: artists)

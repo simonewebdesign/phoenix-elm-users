@@ -23,6 +23,7 @@ defmodule MyApp.Router do
     get "/sign-in", MyApp.SignInController, :index
     get "/register", MyApp.SignUpController, :index
 
+    get "/artists", MyApp.ArtistController, :index_html
     get "/bingo", MyApp.BingoController, :index
     get "/blog", MyApp.BlogController, :index
     get "/style-guide", MyApp.StyleGuideController, :index

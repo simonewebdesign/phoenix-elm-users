@@ -14,6 +14,10 @@ Gulp.task('elm', ['elm-init'], function () {
       dest: './priv/static/js',
       outputName: 'home.js'
   }, {
+      entries: './client/pages/artist/artist.elm',
+      dest: './priv/static/js',
+      outputName: 'artist.js'
+  }, {
       entries: './client/pages/bingo/bingo.elm',
       dest: './priv/static/js',
       outputName: 'bingo.js'

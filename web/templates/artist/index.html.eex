@@ -1,0 +1,8 @@
+<div class="container theme-showcase" role="main">
+  <div class="jumbotron">
+    <h2>Artists</h2>
+  </div>
+
+  <div class="row marketing" id="elm-app-goes-here"></div>
+  </div>
+</div>
