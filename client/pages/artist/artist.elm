@@ -48,7 +48,7 @@ type Action
   --| Create
   --| Update Int
   --| Delete Int
-  --| UpdateInputText String
+  | UpdateInputText String
 
 
 update : Action -> Model -> Model
@@ -69,8 +69,8 @@ update action model =
     --Delete id ->
     --  model
 
-    --UpdateInputText txt ->
-    --  model
+    UpdateInputText txt ->
+      { model | inputText = txt }
 
 --createArtist : String -> Model -> Model
 --createArtist name model =
@@ -134,7 +134,7 @@ entryForm model =
     , Attr.value model.inputText
     , Attr.name "artist"
     , Attr.autofocus True
-    --, onInput address UpdateInputText
+    , onInput actions.address UpdateInputText
     ][]
   --, button [ Attr.class "add", onClick actions.address Create ] [ text "Add" ]
   , h4 [] [text (toString model)]
