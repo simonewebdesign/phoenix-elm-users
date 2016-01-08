@@ -45,7 +45,7 @@ initialModel =
 type Action
   = NoOp
   | SetArtists (List Artist)
-  --| Create
+  | Create
   --| Update Int
   --| Delete Int
   | UpdateInputText String
@@ -60,8 +60,8 @@ update action model =
     SetArtists artists ->
       { model | artists = artists }
 
-    --Create ->
-    --  model |> createArtist model.inputText
+    Create ->
+      createArtist model
 
     --Update id ->
     --  model
@@ -72,9 +72,10 @@ update action model =
     UpdateInputText txt ->
       { model | inputText = txt }
 
---createArtist : String -> Model -> Model
---createArtist name model =
---  { model | artists = {id = 0, name = name} :: model.artists }
+
+createArtist : Model -> Model
+createArtist model =
+  { model | artists = {id = 0, name = model.inputText} :: model.artists }
 
 
 -- SIGNALS
@@ -136,7 +137,7 @@ entryForm model =
     , Attr.autofocus True
     , onInput actions.address UpdateInputText
     ][]
-  --, button [ Attr.class "add", onClick actions.address Create ] [ text "Add" ]
+  , button [ Attr.class "add", onClick actions.address Create ] [ text "Add" ]
   , h4 [] [text (toString model)]
   ]
 
