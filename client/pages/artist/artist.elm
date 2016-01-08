@@ -47,7 +47,7 @@ type Action
   | SetArtists (List Artist)
   | Create
   --| Update Int
-  --| Delete Int
+  | Delete Int
   | UpdateInputText String
 
 
@@ -66,8 +66,8 @@ update action model =
     --Update id ->
     --  model
 
-    --Delete id ->
-    --  model
+    Delete id ->
+      deleteArtist id model
 
     UpdateInputText txt ->
       { model | inputText = txt }
@@ -76,6 +76,11 @@ update action model =
 createArtist : Model -> Model
 createArtist model =
   { model | artists = {id = 0, name = model.inputText} :: model.artists }
+
+
+deleteArtist : Int -> Model -> Model
+deleteArtist id model =
+  { model | artists = List.filter (\artist -> artist.id /= id ) model.artists }
 
 
 -- SIGNALS
@@ -112,7 +117,7 @@ view model =
       tr' artist = tr [] [ td [] [text <| toString artist.id]
                          , td [] [text <| artist.name]
                          , td []
-                           [ button [Attr.type' "button", Attr.class "btn btn-danger"] [text "Delete"]
+                           [ button [Attr.type' "button", Attr.class "btn btn-danger", onClick actions.address (Delete artist.id)] [text "Delete"]
                            ]
                          ]
   in
