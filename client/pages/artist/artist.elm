@@ -137,9 +137,7 @@ entryForm model =
     --, onInput address UpdateInputText
     ][]
   --, button [ Attr.class "add", onClick actions.address Create ] [ text "Add" ]
-  , h2 [] [
-      text (model.inputText ++ " << this is the text entered ")
-    ]
+  , h4 [] [text (toString model)]
   ]
 
 
