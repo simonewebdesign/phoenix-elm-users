@@ -16,12 +16,15 @@ type alias Artist =
   }
 
 
-artist : Json.Decode.Decoder Artist
-artist =
-  Json.Decode.object2 Artist
-    ("id" := Json.Decode.int)
-    ("name" := Json.Decode.string)
-
+--artist : Json.Decode.Decoder Artist
+decoder =
+  let
+    artist =
+      Json.Decode.object2 Artist
+        ("id" := Json.Decode.int)
+        ("name" := Json.Decode.string)
+  in
+    "data" := Json.Decode.list artist
 
 type alias Model =
   List Artist
@@ -67,7 +70,7 @@ actions =
 
 get : Task Http.Error (List Artist)
 get =
-  Http.get (Json.Decode.list artist) "/api/artists"
+  Http.get decoder "/api/artists"
 
 
 port runner : Task Http.Error ()
@@ -86,7 +89,7 @@ view model =
   in
     div [class "container"]
     [ table [class "table table-striped table-bordered"]
-      [ thead [] [tr [] (List.map th' ["ID", "name yo"])]
+      [ thead [] [tr [] (List.map th' ["ID", "Name"])]
       , tbody [] (List.map tr' model)
       ]
     ]

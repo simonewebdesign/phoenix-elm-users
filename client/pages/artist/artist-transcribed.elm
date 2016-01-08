@@ -1,4 +1,4 @@
-module App where
+module Artist where
 
 import Debug
 import Html exposing (..)
@@ -14,7 +14,7 @@ type alias Artist =
   , name: String
   }
 
-type alias Model = 
+type alias Model =
   List Artist
 
 init : Model
@@ -27,34 +27,27 @@ type Action
 
 update : Action -> Model -> Model
 update action model =
-  case action of 
+  case action of
     NoOp ->
       model
 
     SetArtists model' ->
       model'
 
-view : Model -> Html
-view model =
-  div [] [text "Loading"]
-
 actions : Signal.Mailbox Action
 actions =
   Signal.mailbox NoOp
 
 type alias Mailbox a =
-  { address : Address a
+  { address : Signal.Address a
   , signal : Signal a
   }
-
-foldp : (a -> state -> state) -> state -> Signal a -> Signal state
-foldp : (Action -> Model -> Model) -> Model -> Signal Action -> Signal Model
 
 model : Signal Model
 model = Signal.foldp update init actions.signal
 
 main : Signal Html
-main = 
+main =
   Signal.map view model
 
 artist : Json.Decode.Decoder Artist
@@ -69,7 +62,7 @@ get =
 
 port runner : Task Http.Error ()
 port runner =
-  get `andThen` (SetArtusts >> Signal.send actions.address)
+  get `andThen` (SetArtists >> Signal.send actions.address)
 
 view : Model -> Html
 view model =
@@ -78,10 +71,10 @@ view model =
                          , td [] [text <| artist.name]
                          ]
 
-  in 
+  in
     div [class "container"]
     [ table [class "table table-striped table-bordered"]
-      [ thead [] [tr [] (List.map th' ["ID", "name"])]
+      [ thead [] [tr [] (List.map th' ["ID", "Name"])]
       , tbody [] (List.map tr' model)
       ]
     ]
