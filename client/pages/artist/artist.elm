@@ -22,7 +22,7 @@ type alias Artist =
   }
 
 
---artist : Json.Decode.Decoder Artist
+decoder : Json.Decode.Decoder (List Artist)
 decoder =
   let
     artist =
