@@ -6,7 +6,7 @@ import Html.Attributes as Attr
 import Html.Events exposing (on, onClick, targetValue)
 import Http
 import Json.Decode exposing ((:=))
-import Task exposing (Task, andThen)
+import Task exposing (Task, andThen, onError)
 
 
 -- MODEL
@@ -21,16 +21,24 @@ type alias Artist =
   , name: String
   }
 
+type alias ArtistPayload = { data: Artist }
+
 
 decoder : Json.Decode.Decoder (List Artist)
 decoder =
-  let
-    artist =
-      Json.Decode.object2 Artist
-        ("id" := Json.Decode.int)
-        ("name" := Json.Decode.string)
-  in
-    "data" := Json.Decode.list artist
+  "data" := Json.Decode.list artistDecoder
+
+
+artistDecoder : Json.Decode.Decoder Artist
+artistDecoder =
+  Json.Decode.object2 Artist
+    ("id" := Json.Decode.int)
+    ("name" := Json.Decode.string)
+
+
+payloadDecoder : Json.Decode.Decoder ArtistPayload
+payloadDecoder =
+  Json.Decode.object1 ArtistPayload ("data" := artistDecoder)
 
 
 initialModel : Model
@@ -45,9 +53,8 @@ initialModel =
 type Action
   = NoOp
   | SetArtists (List Artist)
-  | Create
-  --| Update Int
-  | Delete Int
+  | SetArtist Artist
+  | DeleteArtist Int
   | UpdateInputText String
 
 
@@ -60,27 +67,17 @@ update action model =
     SetArtists artists ->
       { model | artists = artists }
 
-    Create ->
-      createArtist model
+    SetArtist artist ->
+      { model | artists = artist :: model.artists, inputText = "" }
 
     --Update id ->
     --  model
 
-    Delete id ->
-      deleteArtist id model
+    DeleteArtist id ->
+      { model | artists = List.filter (\artist -> artist.id /= id ) model.artists }
 
     UpdateInputText txt ->
       { model | inputText = txt }
-
-
-createArtist : Model -> Model
-createArtist model =
-  { model | artists = {id = 0, name = model.inputText} :: model.artists }
-
-
-deleteArtist : Int -> Model -> Model
-deleteArtist id model =
-  { model | artists = List.filter (\artist -> artist.id /= id ) model.artists }
 
 
 -- SIGNALS
@@ -109,6 +106,28 @@ port runner =
   get `andThen` (SetArtists >> Signal.send actions.address)
 
 
+postArtist : String -> Task Http.Error ()
+postArtist name =
+  let
+    url = "http://localhost:4000/api/artists"
+    body =
+      Http.multipart
+        [ Http.stringData "artist[name]" name ]
+  in
+    Http.post payloadDecoder url body
+    `andThen` (\{data} -> Signal.send actions.address (SetArtist data))
+    `onError` (\error -> Signal.send actions.address (SetArtist {id = -1, name = toString error}))
+
+
+tasksMailbox =
+  Signal.mailbox (Task.succeed ())
+
+
+port apiTasks : Signal (Task Http.Error ())
+port apiTasks =
+  tasksMailbox.signal
+
+
 -- VIEW
 
 view : Model -> Html
@@ -117,7 +136,7 @@ view model =
       tr' artist = tr [] [ td [] [text <| toString artist.id]
                          , td [] [text <| artist.name]
                          , td []
-                           [ button [Attr.type' "button", Attr.class "btn btn-danger", onClick actions.address (Delete artist.id)] [text "Delete"]
+                           [ button [Attr.type' "button", Attr.class "btn btn-danger", onClick actions.address (DeleteArtist artist.id)] [text "Delete"]
                            ]
                          ]
   in
@@ -142,7 +161,7 @@ entryForm model =
     , Attr.autofocus True
     , onInput actions.address UpdateInputText
     ][]
-  , button [ Attr.class "add", onClick actions.address Create ] [ text "Add" ]
+  , button [ Attr.class "add", onClick tasksMailbox.address (postArtist model.inputText) ] [ text "Add" ]
   , h4 [] [text (toString model)]
   ]
 
