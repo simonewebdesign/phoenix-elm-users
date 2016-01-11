@@ -119,6 +119,21 @@ postArtist name =
     `onError` (\error -> Signal.send actions.address (SetArtist {id = -1, name = toString error}))
 
 
+deleteRequest : String -> Http.Request
+deleteRequest id =
+  { verb = "DELETE"
+  , headers = []
+  , url = "http://localhost:4000/api/artists/" ++ id
+  , body = Http.empty
+  }
+
+deleteArtist : Int -> Task Http.Error ()
+deleteArtist id =
+  Http.send Http.defaultSettings (deleteRequest (toString id))
+  `andThen` (\_ -> Signal.send actions.address (DeleteArtist id))
+  `onError` (\error -> Signal.send actions.address (SetArtist {id = -2, name = toString error}))
+
+
 tasksMailbox =
   Signal.mailbox (Task.succeed ())
 
@@ -136,7 +151,7 @@ view model =
       tr' artist = tr [] [ td [] [text <| toString artist.id]
                          , td [] [text <| artist.name]
                          , td []
-                           [ button [Attr.type' "button", Attr.class "btn btn-danger", onClick actions.address (DeleteArtist artist.id)] [text "Delete"]
+                           [ button [Attr.type' "button", Attr.class "btn btn-danger", onClick tasksMailbox.address (deleteArtist artist.id)] [text "Delete"]
                            ]
                          ]
   in
