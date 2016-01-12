@@ -119,17 +119,14 @@ postArtist name =
     `onError` (\error -> Signal.send actions.address (SetArtist {id = -1, name = toString error}))
 
 
-deleteRequest : String -> Http.Request
-deleteRequest id =
-  { verb = "DELETE"
-  , headers = []
-  , url = "http://localhost:4000/api/artists/" ++ id
-  , body = Http.empty
-  }
-
 deleteArtist : Int -> Task Http.Error ()
 deleteArtist id =
-  Http.send Http.defaultSettings (deleteRequest (toString id))
+  Http.send Http.defaultSettings
+    { verb = "DELETE"
+    , headers = []
+    , url = "http://localhost:4000/api/artists/" ++ toString id
+    , body = Http.empty
+    }
   `andThen` (\_ -> Signal.send actions.address (DeleteArtist id))
   `onError` (\error -> Signal.send actions.address (SetArtist {id = -2, name = toString error}))
 
