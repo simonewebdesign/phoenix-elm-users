@@ -36,7 +36,8 @@ defmodule MyApp.Mixfile do
      {:phoenix_html, "~> 2.1"},
      {:phoenix_live_reload, "~> 1.0", only: :dev},
      {:cowboy, "~> 1.0"},
-     {:addict, github: "bigbassroller/addict"}]
+     {:addict, github: "bigbassroller/addict"},
+     {:scrivener, "~> 1.0"}]
   end
 
   # Aliases are shortcut or tasks specific to the current project.

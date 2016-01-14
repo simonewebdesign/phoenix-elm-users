@@ -9,9 +9,17 @@ defmodule MyApp.ArtistController do
     render conn, "index.html"
   end
 
-  def index(conn, _params) do
-    artists = Artist |> Artist.ordered_by_most_recent_first() |> Repo.all()
-    render(conn, "index.json", artists: artists)
+  def index(conn, params) do
+    paginator = Artist
+    |> Artist.ordered_by_most_recent_first()
+    |> Repo.paginate(params)
+
+    render conn, "index.json",
+      artists: paginator.entries,
+      page_number: paginator.page_number,
+      page_size: paginator.page_size,
+      total_pages: paginator.total_pages,
+      total_entries: paginator.total_entries
   end
 
   def create(conn, %{"artist" => artist_params}) do
