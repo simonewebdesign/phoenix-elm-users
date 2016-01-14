@@ -21,6 +21,11 @@ defmodule MyApp.Artist do
     |> cast(params, @required_fields, @optional_fields)
   end
 
+  def ordered_by_most_recent_first(query) do
+    from artist in query,
+      order_by: [desc: artist.id]
+  end
+
   def ordered_by_name(query) do
     from artist in query,
       order_by: artist.name
