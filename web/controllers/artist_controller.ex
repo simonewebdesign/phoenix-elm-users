@@ -10,7 +10,7 @@ defmodule MyApp.ArtistController do
   end
 
   def index(conn, _params) do
-    artists = Repo.all(Artist)
+    artists = Artist |> Artist.ordered_by_name() |> Repo.all()
     render(conn, "index.json", artists: artists)
   end
 

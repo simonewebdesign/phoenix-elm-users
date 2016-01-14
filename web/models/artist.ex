@@ -20,4 +20,9 @@ defmodule MyApp.Artist do
     model
     |> cast(params, @required_fields, @optional_fields)
   end
+
+  def ordered_by_name(query) do
+    from artist in query,
+      order_by: artist.name
+  end
 end
