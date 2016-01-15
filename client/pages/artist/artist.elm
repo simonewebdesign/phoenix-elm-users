@@ -14,6 +14,7 @@ import Task exposing (Task, andThen, onError)
 type alias Model =
   { inputText : String
   , artists : List Artist
+  , page : Int
   }
 
 type alias Artist =
@@ -45,6 +46,7 @@ initialModel : Model
 initialModel =
   { inputText = ""
   , artists = []
+  , page = 1
   }
 
 
@@ -53,9 +55,11 @@ initialModel =
 type Action
   = NoOp
   | SetArtists (List Artist)
+  | AppendArtists (List Artist)
   | SetArtist Artist
   | DeleteArtist Int
   | UpdateInputText String
+  | RequestNextPage
 
 
 update : Action -> Model -> Model
@@ -66,6 +70,9 @@ update action model =
 
     SetArtists artists ->
       { model | artists = artists }
+
+    AppendArtists artists ->
+      { model | artists = model.artists ++ artists }
 
     SetArtist artist ->
       { model | artists = artist :: model.artists, inputText = "" }
@@ -79,6 +86,9 @@ update action model =
     UpdateInputText txt ->
       { model | inputText = txt }
 
+    RequestNextPage ->
+      { model | page = model.page + 1 }
+
 
 -- SIGNALS
 
@@ -88,7 +98,7 @@ main =
 
 
 state : Signal Model
-state = Signal.foldp update initialModel actions.signal
+state = Signal.foldp update initialModel inputs
 
 
 actions : Signal.Mailbox Action
@@ -96,14 +106,22 @@ actions =
   Signal.mailbox NoOp
 
 
-get : Task Http.Error (List Artist)
-get =
-  Http.get decoder "/api/artists"
+inputs : Signal Action
+inputs =
+  let
+    scroll = Signal.map (always RequestNextPage) scrolledToBottom
+  in
+    Signal.merge actions.signal scroll
+
+
+get : Int -> Task Http.Error (List Artist)
+get page =
+  Http.get decoder ("/api/artists/?page=" ++ toString page)
 
 
 port runner : Task Http.Error ()
 port runner =
-  get `andThen` (SetArtists >> Signal.send actions.address)
+  get 1 `andThen` (SetArtists >> Signal.send actions.address)
 
 
 postArtist : String -> Task Http.Error ()
