@@ -7,14 +7,15 @@ import Html.Events exposing (on, onClick, targetValue)
 import Http
 import Json.Decode exposing ((:=))
 import Task exposing (Task, andThen, onError)
-
+import StartApp
+import Effects exposing (Effects, Never)
 
 -- MODEL
 
 type alias Model =
   { inputText : String
   , artists : List Artist
-  , page : Int
+  , nextPage : Int
   }
 
 type alias Artist =
@@ -46,7 +47,7 @@ initialModel : Model
 initialModel =
   { inputText = ""
   , artists = []
-  , page = 1
+  , nextPage = 1
   }
 
 
@@ -54,51 +55,88 @@ initialModel =
 
 type Action
   = NoOp
-  | SetArtists (List Artist)
-  | AppendArtists (List Artist)
+  --| SetArtists (List Artist)
+  | AppendArtists (Maybe (List Artist))
   | SetArtist Artist
   | DeleteArtist Int
   | UpdateInputText String
   | RequestNextPage
 
 
-update : Action -> Model -> Model
+update : Action -> Model -> ( Model, Effects Action )
 update action model =
   case action of
     NoOp ->
-      model
+      noFx model
 
-    SetArtists artists ->
-      { model | artists = artists }
+    --SetArtists artists ->
+    --  noFx { model | artists = artists }
 
-    AppendArtists artists ->
-      { model | artists = model.artists ++ artists }
+    AppendArtists maybeArtists ->
+      case maybeArtists of
+        Nothing ->
+          noFx model
+        Just artists ->
+          noFx
+          { model 
+            | artists = model.artists ++ artists
+            , nextPage = model.nextPage + 1
+          }
 
     SetArtist artist ->
-      { model | artists = artist :: model.artists, inputText = "" }
+      noFx { model | artists = artist :: model.artists, inputText = "" }
 
     --Update id ->
     --  model
 
     DeleteArtist id ->
-      { model | artists = List.filter (\artist -> artist.id /= id ) model.artists }
+      noFx { model | artists = List.filter (\artist -> artist.id /= id ) model.artists }
 
     UpdateInputText txt ->
-      { model | inputText = txt }
+      noFx { model | inputText = txt }
 
     RequestNextPage ->
-      { model | page = model.page + 1 }
+      (model, getArtists model.nextPage)
+
+
+getArtists : Int -> Effects Action
+getArtists page =
+  get page
+  |> Task.toMaybe
+  |> Task.map AppendArtists
+  |> Effects.task
 
 
 -- SIGNALS
 
+app =
+  StartApp.start
+    { init = init
+    , update = update
+    , view = view
+    , inputs = []
+    }
+
+
+init =
+  (,) 
+    initialModel
+    (getArtists initialModel.nextPage)
+    --(get 1 `andThen` (SetArtists >> Signal.send actions.address))
+
 main : Signal Html
 main =
-  Signal.map view state
+  app.html
+  --Signal.map view state
 
 
-state : Signal Model
-state = Signal.foldp update initialModel inputs
+port tasks : Signal (Task Never ())
+port tasks =
+  app.tasks
+
+
+--state : Signal Model
+--state = Signal.foldp update initialModel inputs
 
 
 actions : Signal.Mailbox Action
@@ -119,9 +157,10 @@ get page =
   Http.get decoder ("/api/artists/?page=" ++ toString page)
 
 
-port runner : Task Http.Error ()
-port runner =
-  get 1 `andThen` (SetArtists >> Signal.send actions.address)
+-- Refactor this: should belong to init (see Example 5 from the Elm architecture)
+--port runner : Task Http.Error ()
+--port runner =
+  
 
 
 postArtist : String -> Task Http.Error ()
@@ -149,8 +188,24 @@ deleteArtist id =
   `onError` (\error -> Signal.send actions.address (SetArtist {id = -2, name = toString error}))
 
 
+-- FIXME: you probably don't need this anymore. That's why everything stopped working probably.
 tasksMailbox =
   Signal.mailbox (Task.succeed ())
+
+
+--port myTasks : Signal (Task Never ())
+--Trying to send an unsupported type through inbound port `myTasks`
+
+--188│ port myTasks : Signal (Task Never ())
+--     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--The specific unsupported type is:
+
+--    Task.Task Effects.Never ()
+
+--The types of values that can flow through inbound ports include:
+
+--    Ints, Floats, Bools, Strings, Maybes, Lists, Arrays, Tuples, Json.Values,
+--    and concrete records.
 
 
 port apiTasks : Signal (Task Http.Error ())
@@ -160,8 +215,8 @@ port apiTasks =
 
 -- VIEW
 
-view : Model -> Html
-view model =
+view : Signal.Address Action -> Model -> Html
+view address model =
   let th' field = th [] [text field]
       tr' artist = tr [] [ td [] [text <| toString artist.id]
                          , td [] [text <| artist.name]
@@ -199,6 +254,11 @@ entryForm model =
 onInput : Signal.Address a -> (String -> a) -> Attribute
 onInput address contentToValue =
     on "input" targetValue (\str -> Signal.message address (contentToValue str))
+
+
+noFx : Model -> (Model, Effects Action)
+noFx model =
+  (,) model Effects.none
 
 
 port scrolledToBottom : Signal Bool
