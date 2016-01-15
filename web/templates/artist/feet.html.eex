@@ -1,6 +1,7 @@
 <script type="text/javascript">
   var elmDiv = document.getElementById('elm-app-goes-here');
-  Elm.embed(Elm.Artist, elmDiv);
+  var initialValues = { scrolledToBottom: false };
+  var artistApp = Elm.embed(Elm.Artist, elmDiv, initialValues);
 </script>
 
 <script>
@@ -57,6 +58,7 @@
 
     if (scrolledToBottom()) {
       console.log('BOTTOM');
+      artistApp.ports.scrolledToBottom.send(true);
     }
   }
 </script>

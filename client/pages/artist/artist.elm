@@ -181,3 +181,6 @@ entryForm model =
 onInput : Signal.Address a -> (String -> a) -> Attribute
 onInput address contentToValue =
     on "input" targetValue (\str -> Signal.message address (contentToValue str))
+
+
+port scrolledToBottom : Signal Bool
