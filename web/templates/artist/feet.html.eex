@@ -2,3 +2,61 @@
   var elmDiv = document.getElementById('elm-app-goes-here');
   Elm.embed(Elm.Artist, elmDiv);
 </script>
+
+<script>
+  // Detect when the user has reached the bottom of the page
+  // and notify Elm
+
+  function scrolledToBottom() {
+    return (window.innerHeight + window.scrollY) >= document.body.offsetHeight;
+  }
+
+  // Returns a function, that, as long as it continues to be invoked, will not
+  // be triggered. The function will be called after it stops being called for
+  // N milliseconds. If `immediate` is passed, trigger the function on the
+  // leading edge, instead of the trailing.
+  var debounce = function(func, wait, immediate) {
+    var timeout;
+    return function() {
+      var context = this, args = arguments;
+      var later = function() {
+        timeout = null;
+        if (!immediate) func.apply(context, args);
+      };
+      var callNow = immediate && !timeout;
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+      if (callNow) func.apply(context, args);
+    };
+  };
+
+  /* Resource conscious scroll callback.
+   * Code taken from https://developer.mozilla.org/en-US/docs/Web/Events/scroll
+   */
+  var throttle = (type, name, obj) => {
+    obj = obj || window;
+    var running = false;
+    var func = function () {
+      if (running) { return; }
+      running = true;
+      requestAnimationFrame(function () {
+        obj.dispatchEvent(new CustomEvent(name));
+        running = false;
+      });
+    };
+    obj.addEventListener(type, func);
+  };
+  /* init - you can init any event */
+  throttle('scroll', 'optimizedScroll');
+
+  // handle event
+  window.addEventListener('optimizedScroll', debounce(scrollCallback, 100));
+
+  function scrollCallback() {
+    console.log('scrolled!')
+
+    if (scrolledToBottom()) {
+      console.log('BOTTOM');
+    }
+  }
+</script>
