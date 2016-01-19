@@ -66,7 +66,7 @@ type Action
   -- DELETE /api/artists/:id
   | DeleteArtist Int
   | RemoveArtist (Maybe Int)
-  --| RequestNextPage
+  | RequestNextPage
   | UpdateInputText String
 
 
@@ -85,9 +85,16 @@ update action model =
           , Effects.none
           )
 
+        Just [] ->
+          -- Empty result set, probably because we reached the last page
+          ( model
+          , Effects.none
+          )
+
         Just artists ->
           ( { model
               | artists = model.artists ++ artists
+              , nextPage = model.nextPage + 1
             }
           , Effects.none
           )
@@ -136,16 +143,10 @@ update action model =
       , Effects.none
       )
 
-    --RequestNextPage ->
-    --  (model, getArtists model.nextPage)
-
-
---requestDeleteArtist : Int -> Effects Action
---requestDeleteArtist id =
---  deleteArtist id
---  |> Task.toMaybe
---  |> Task.map DeleteArtist
---  |> Effects.task
+    RequestNextPage ->
+      ( model
+      , getArtists model.nextPage
+      )
 
 
 getArtists : Int -> Effects Action
@@ -163,7 +164,7 @@ app =
     { init = init
     , update = update
     , view = view
-    , inputs = []
+    , inputs = inputs
     }
 
 
@@ -180,18 +181,13 @@ port tasks : Signal (Task Never ())
 port tasks =
   app.tasks
 
---actions : Signal.Mailbox Action
---actions =
---  Signal.mailbox NoOp
 
-
---inputs : Signal Action
---inputs =
---  actions.signal
-  --let
-  --  scroll = Signal.map (always RequestNextPage) scrolledToBottom
-  --in
-  --  Signal.merge actions.signal scroll
+inputs : List (Signal Action)
+inputs =
+  let
+    scroll = Signal.map (always RequestNextPage) scrolledToBottom
+  in
+    [scroll]
 
 
 get : Int -> Task Http.Error (List Artist)
