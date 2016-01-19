@@ -55,55 +55,104 @@ initialModel =
 
 type Action
   = NoOp
-  --| SetArtists (List Artist)
-  | AppendArtists (Maybe (List Artist))
-  | SetArtist Artist
+  -- GET /api/artists (index)
+  --| GetArtists
+  | SetArtists (Maybe (List Artist))
+  -- GET /api/artists/:id (show)
+  --| GetArtist Int
+  | SetArtist (Maybe (Artist))
+  -- POST /api/artists (create)
+  | CreateArtist { name : String }
+  -- DELETE /api/artists/:id
   | DeleteArtist Int
+  | RemoveArtist (Maybe Int)
+  --| RequestNextPage
   | UpdateInputText String
-  | RequestNextPage
 
 
 update : Action -> Model -> ( Model, Effects Action )
 update action model =
   case action of
     NoOp ->
-      noFx model
+      ( model
+      , Effects.none
+      )
 
-    --SetArtists artists ->
-    --  noFx { model | artists = artists }
-
-    AppendArtists maybeArtists ->
+    SetArtists maybeArtists ->
       case maybeArtists of
         Nothing ->
-          noFx model
+          ( model
+          , Effects.none
+          )
+
         Just artists ->
-          noFx
-          { model 
-            | artists = model.artists ++ artists
-            , nextPage = model.nextPage + 1
-          }
+          ( { model
+              | artists = model.artists ++ artists
+            }
+          , Effects.none
+          )
 
-    SetArtist artist ->
-      noFx { model | artists = artist :: model.artists, inputText = "" }
+    SetArtist maybeArtist ->
+      case maybeArtist of
+        Nothing ->
+          ( model
+          , Effects.none
+          )
 
-    --Update id ->
-    --  model
+        Just artist ->
+          ( { model
+              | artists = artist :: model.artists
+              , inputText = ""
+            }
+          , Effects.none
+          )
+
+    CreateArtist artist ->
+      ( model
+      , maybeCreateArtist artist
+      )
 
     DeleteArtist id ->
-      noFx { model | artists = List.filter (\artist -> artist.id /= id ) model.artists }
+      ( model
+      , maybeDeleteArtist id
+      )
+
+    RemoveArtist maybeId ->
+      case maybeId of
+        Nothing ->
+          ( model
+          , Effects.none
+          )
+
+        Just id ->
+          ( { model
+              | artists = List.filter (\artist -> artist.id /= id ) model.artists
+            }
+          , Effects.none
+          )
 
     UpdateInputText txt ->
-      noFx { model | inputText = txt }
+      ( { model | inputText = txt }
+      , Effects.none
+      )
 
-    RequestNextPage ->
-      (model, getArtists model.nextPage)
+    --RequestNextPage ->
+    --  (model, getArtists model.nextPage)
+
+
+--requestDeleteArtist : Int -> Effects Action
+--requestDeleteArtist id =
+--  deleteArtist id
+--  |> Task.toMaybe
+--  |> Task.map DeleteArtist
+--  |> Effects.task
 
 
 getArtists : Int -> Effects Action
 getArtists page =
   get page
   |> Task.toMaybe
-  |> Task.map AppendArtists
+  |> Task.map SetArtists
   |> Effects.task
 
 
@@ -119,37 +168,30 @@ app =
 
 
 init =
-  (,) 
-    initialModel
-    (getArtists initialModel.nextPage)
-    --(get 1 `andThen` (SetArtists >> Signal.send actions.address))
+  (,) initialModel (getArtists initialModel.nextPage)
+
 
 main : Signal Html
 main =
   app.html
-  --Signal.map view state
 
 
 port tasks : Signal (Task Never ())
 port tasks =
   app.tasks
 
-
---state : Signal Model
---state = Signal.foldp update initialModel inputs
-
-
-actions : Signal.Mailbox Action
-actions =
-  Signal.mailbox NoOp
+--actions : Signal.Mailbox Action
+--actions =
+--  Signal.mailbox NoOp
 
 
-inputs : Signal Action
-inputs =
-  let
-    scroll = Signal.map (always RequestNextPage) scrolledToBottom
-  in
-    Signal.merge actions.signal scroll
+--inputs : Signal Action
+--inputs =
+--  actions.signal
+  --let
+  --  scroll = Signal.map (always RequestNextPage) scrolledToBottom
+  --in
+  --  Signal.merge actions.signal scroll
 
 
 get : Int -> Task Http.Error (List Artist)
@@ -157,60 +199,75 @@ get page =
   Http.get decoder ("/api/artists/?page=" ++ toString page)
 
 
--- Refactor this: should belong to init (see Example 5 from the Elm architecture)
---port runner : Task Http.Error ()
---port runner =
-  
-
-
-postArtist : String -> Task Http.Error ()
-postArtist name =
+postArtist : { a | name : String } -> Task Http.Error ArtistPayload
+postArtist artist =
   let
     url = "http://localhost:4000/api/artists"
     body =
       Http.multipart
-        [ Http.stringData "artist[name]" name ]
+        [ Http.stringData "artist[name]" artist.name ]
   in
     Http.post payloadDecoder url body
-    `andThen` (\{data} -> Signal.send actions.address (SetArtist data))
-    `onError` (\error -> Signal.send actions.address (SetArtist {id = -1, name = toString error}))
 
 
-deleteArtist : Int -> Task Http.Error ()
+maybeCreateArtist : { a | name : String } -> Effects Action
+maybeCreateArtist artist =
+  let
+    extractArtistFromData {data} = data
+  in
+  postArtist artist
+  |> Task.map extractArtistFromData
+  |> Task.toMaybe
+  |> Task.map SetArtist
+  |> Effects.task
+
+
+deleteArtist : Int -> Task Http.Error Int
 deleteArtist id =
-  Http.send Http.defaultSettings
-    { verb = "DELETE"
-    , headers = []
-    , url = "http://localhost:4000/api/artists/" ++ toString id
-    , body = Http.empty
-    }
-  `andThen` (\_ -> Signal.send actions.address (DeleteArtist id))
-  `onError` (\error -> Signal.send actions.address (SetArtist {id = -2, name = toString error}))
+  let
+    settings = Http.defaultSettings
+
+    request =
+      { verb = "DELETE"
+      , headers = []
+      , url = "http://localhost:4000/api/artists/" ++ toString id
+      , body = Http.empty
+      }
+
+    response = Http.send settings request
+  in
+    Task.mapError promoteError response `andThen` handleDeleteResponse id
 
 
--- FIXME: you probably don't need this anymore. That's why everything stopped working probably.
-tasksMailbox =
-  Signal.mailbox (Task.succeed ())
+promoteError : Http.RawError -> Http.Error
+promoteError rawError =
+  case rawError of
+    Http.RawTimeout -> Http.Timeout
+    Http.RawNetworkError -> Http.NetworkError
 
 
---port myTasks : Signal (Task Never ())
---Trying to send an unsupported type through inbound port `myTasks`
+handleDeleteResponse : Int -> Http.Response -> Task Http.Error Int
+handleDeleteResponse id response =
+  if 200 <= response.status && response.status < 300 then
 
---188│ port myTasks : Signal (Task Never ())
---     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
---The specific unsupported type is:
+      case response.value of
+        Http.Text str ->
+            Task.succeed id
 
---    Task.Task Effects.Never ()
+        _ ->
+            Task.fail (Http.UnexpectedPayload "Response body is a blob, expecting a string.")
 
---The types of values that can flow through inbound ports include:
+  else
 
---    Ints, Floats, Bools, Strings, Maybes, Lists, Arrays, Tuples, Json.Values,
---    and concrete records.
+      Task.fail (Http.BadResponse response.status response.statusText)
 
 
-port apiTasks : Signal (Task Http.Error ())
-port apiTasks =
-  tasksMailbox.signal
+maybeDeleteArtist : Int -> Effects Action
+maybeDeleteArtist id =
+  deleteArtist id
+  |> Task.toMaybe
+  |> Task.map RemoveArtist
+  |> Effects.task
 
 
 -- VIEW
@@ -221,13 +278,14 @@ view address model =
       tr' artist = tr [] [ td [] [text <| toString artist.id]
                          , td [] [text <| artist.name]
                          , td []
-                           [ button [Attr.type' "button", Attr.class "btn btn-danger", onClick tasksMailbox.address (deleteArtist artist.id)] [text "Delete"]
+                           [
+                           button [Attr.type' "button", Attr.class "btn btn-danger", onClick address (DeleteArtist artist.id)] [text "Delete"]
                            ]
                          ]
   in
     div [Attr.class "container"]
 
-    [ entryForm model
+    [ entryForm address model
     , table [Attr.class "table table-striped table-bordered"]
       [ thead [] [tr [] (List.map th' ["ID", "Name", "Actions"])]
       , tbody [] (List.map tr' model.artists)
@@ -235,8 +293,8 @@ view address model =
     ]
 
 
-entryForm : Model -> Html
-entryForm model =
+entryForm : Signal.Address Action -> Model -> Html
+entryForm address model =
   div [ ]
   [ input
     [ Attr.type' "text"
@@ -244,9 +302,9 @@ entryForm model =
     , Attr.value model.inputText
     , Attr.name "artist"
     , Attr.autofocus True
-    , onInput actions.address UpdateInputText
+    , onInput address UpdateInputText
     ][]
-  , button [ Attr.class "add", onClick tasksMailbox.address (postArtist model.inputText) ] [ text "Add" ]
+    , button [ Attr.class "add", onClick address (CreateArtist { name = model.inputText }) ] [ text "Add" ]
   , h4 [] [text (toString model)]
   ]
 
@@ -254,11 +312,6 @@ entryForm model =
 onInput : Signal.Address a -> (String -> a) -> Attribute
 onInput address contentToValue =
     on "input" targetValue (\str -> Signal.message address (contentToValue str))
-
-
-noFx : Model -> (Model, Effects Action)
-noFx model =
-  (,) model Effects.none
 
 
 port scrolledToBottom : Signal Bool
