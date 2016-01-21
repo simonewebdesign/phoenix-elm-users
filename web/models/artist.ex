@@ -30,4 +30,10 @@ defmodule MyApp.Artist do
     from artist in query,
       order_by: artist.name
   end
+
+  def filtered(query, artist_name) do
+    from artist in query,
+      where: like(artist.name, ^("%#{artist_name}%")),
+      order_by: [desc: artist.id]
+  end
 end

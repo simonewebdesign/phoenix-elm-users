@@ -11,7 +11,7 @@ defmodule MyApp.ArtistController do
 
   def index(conn, params) do
     paginator = Artist
-    |> Artist.ordered_by_most_recent_first()
+    |> Artist.filtered(params["name"])
     |> Repo.paginate(params)
 
     render conn, "index.json",

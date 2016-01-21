@@ -14,6 +14,7 @@ import Effects exposing (Effects, Never)
 
 type alias Model =
   { inputText : String
+  , searchText : String
   , artists : List Artist
   , nextPage : Int
   }
@@ -46,6 +47,7 @@ payloadDecoder =
 initialModel : Model
 initialModel =
   { inputText = ""
+  , searchText = ""
   , artists = []
   , nextPage = 1
   }
@@ -66,8 +68,11 @@ type Action
   -- DELETE /api/artists/:id
   | DeleteArtist Int
   | RemoveArtist (Maybe Int)
+  -- Filtering (e.g. /api/artists?name=...)
+  | ReplaceArtists (Maybe (List Artist))
   | RequestNextPage
   | UpdateInputText String
+  | UpdateSearchText String
 
 
 update : Action -> Model -> ( Model, Effects Action )
@@ -77,6 +82,26 @@ update action model =
       ( model
       , Effects.none
       )
+
+    ReplaceArtists maybeArtists ->
+      case maybeArtists of
+        Nothing ->
+          ( model
+          , Effects.none
+          )
+
+        Just [] ->
+          -- Empty result set, probably because we reached the last page
+          ( model
+          , Effects.none
+          )
+
+        Just artists ->
+          ( { model
+              | artists = artists
+            }
+          , Effects.none
+          )
 
     SetArtists maybeArtists ->
       case maybeArtists of
@@ -141,6 +166,11 @@ update action model =
     UpdateInputText txt ->
       ( { model | inputText = txt }
       , Effects.none
+      )
+
+    UpdateSearchText txt ->
+      ( { model | searchText = txt }
+      , maybeFilterResults { name = txt }
       )
 
     RequestNextPage ->
@@ -266,6 +296,19 @@ maybeDeleteArtist id =
   |> Effects.task
 
 
+getFilteredResults : { a | name : String } -> Task Http.Error (List Artist)
+getFilteredResults artist =
+  Http.get decoder ("/api/artists/?name=" ++ artist.name)
+
+
+maybeFilterResults : { a | name : String } -> Effects Action
+maybeFilterResults artist =
+  getFilteredResults artist
+  |> Task.toMaybe
+  |> Task.map ReplaceArtists
+  |> Effects.task
+
+
 -- VIEW
 
 view : Signal.Address Action -> Model -> Html
@@ -307,13 +350,15 @@ entryForm address model =
   , h4 [] [text (toString model)]
   ]
 
+
 filterForm : Signal.Address Action -> Model -> Html
 filterForm address model =
   div [ Attr.class "search-control"]
   [ input
       [ Attr.type' "text"
       , Attr.name "search"
-      , onInput address UpdateInputText
+      , Attr.value model.searchText
+      , onInput address UpdateSearchText
       ][]
   , span [ Attr.class "magnifying-glass" ] [ text "🔍" ]
   ]
