@@ -22,3 +22,10 @@ Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
   * Docs: http://hexdocs.pm/phoenix
   * Mailing list: http://groups.google.com/group/phoenix-talk
   * Source: https://github.com/phoenixframework/phoenix
+
+
+## Things to do (prioritised)
+
+- Filtering results by id and name
+- Update action
+- Routing
