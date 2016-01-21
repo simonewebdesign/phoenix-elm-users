@@ -270,18 +270,21 @@ maybeDeleteArtist id =
 
 view : Signal.Address Action -> Model -> Html
 view address model =
-  let th' field = th [] [text field]
-      tr' artist = tr [] [ td [] [text <| toString artist.id]
-                         , td [] [text <| artist.name]
-                         , td []
-                           [
-                           button [Attr.type' "button", Attr.class "btn btn-danger", onClick address (DeleteArtist artist.id)] [text "Delete"]
-                           ]
-                         ]
+  let
+    th' field =
+      th [] [text field]
+    tr' artist =
+      tr []
+      [ td [] [text <| toString artist.id]
+      , td [] [text <| artist.name]
+      , td []
+        [ button [Attr.type' "button", Attr.class "btn btn-danger", onClick address (DeleteArtist artist.id)] [text "Delete"]
+        ]
+      ]
   in
     div [Attr.class "container"]
-
-    [ entryForm address model
+    [ filterForm address model
+    , entryForm address model
     , table [Attr.class "table table-striped table-bordered"]
       [ thead [] [tr [] (List.map th' ["ID", "Name", "Actions"])]
       , tbody [] (List.map tr' model.artists)
@@ -291,7 +294,7 @@ view address model =
 
 entryForm : Signal.Address Action -> Model -> Html
 entryForm address model =
-  div [ ]
+  div []
   [ input
     [ Attr.type' "text"
     , Attr.placeholder "Artist name..."
@@ -300,8 +303,19 @@ entryForm address model =
     , Attr.autofocus True
     , onInput address UpdateInputText
     ][]
-    , button [ Attr.class "add", onClick address (CreateArtist { name = model.inputText }) ] [ text "Add" ]
+  , button [ Attr.class "add", onClick address (CreateArtist { name = model.inputText }) ] [ text "Add" ]
   , h4 [] [text (toString model)]
+  ]
+
+filterForm : Signal.Address Action -> Model -> Html
+filterForm address model =
+  div [ Attr.class "search-control"]
+  [ input
+      [ Attr.type' "text"
+      , Attr.name "search"
+      , onInput address UpdateInputText
+      ][]
+  , span [ Attr.class "magnifying-glass" ] [ text "🔍" ]
   ]
 
 
