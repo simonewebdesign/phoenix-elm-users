@@ -1,11 +1,8 @@
 module Artist where
 
---import Debug
 import Html exposing (..)
 import Html.Attributes as Attr
 import Html.Events exposing (on, onClick, targetValue)
-import Http
-import Json.Decode exposing ((:=))
 import Task exposing (Task, andThen, onError)
 import StartApp
 import Effects exposing (Effects, Never)
@@ -19,20 +16,11 @@ import PageModule2
 -- MODEL
 
 type alias Model =
-  { inputText : String
-  , searchText : String
-  , artists : List Artist
-  , currentPage : Page
-  , nextPage : Int
-  -- pages
+  { currentPage : Page
+  -- pages' models
   , index : Index.Model
   , pageModule1 : PageModule1.Model
   , pageModule2 : PageModule2.Model
-  }
-
-type alias Artist =
-  { id: Int
-  , name: String
   }
 
 type Page
@@ -40,33 +28,10 @@ type Page
   | PageModule1
   | PageModule2
 
-type alias ArtistPayload = { data: Artist }
-
-
-decoder : Json.Decode.Decoder (List Artist)
-decoder =
-  "data" := Json.Decode.list artistDecoder
-
-
-artistDecoder : Json.Decode.Decoder Artist
-artistDecoder =
-  Json.Decode.object2 Artist
-    ("id" := Json.Decode.int)
-    ("name" := Json.Decode.string)
-
-
-payloadDecoder : Json.Decode.Decoder ArtistPayload
-payloadDecoder =
-  Json.Decode.object1 ArtistPayload ("data" := artistDecoder)
-
 
 initialModel : Model
 initialModel =
-  { inputText = ""
-  , searchText = ""
-  , artists = []
-  , currentPage = Index
-  , nextPage = 1
+  { currentPage = Index
   , index = fst Index.init
   , pageModule1 = fst PageModule1.init
   , pageModule2 = fst PageModule2.init
@@ -77,22 +42,6 @@ initialModel =
 
 type Action
   = NoOp
-  -- GET /api/artists (index)
-  --| GetArtists
-  | SetArtists (Maybe (List Artist))
-  -- GET /api/artists/:id (show)
-  --| GetArtist Int
-  | SetArtist (Maybe (Artist))
-  -- POST /api/artists (create)
-  | CreateArtist { name : String }
-  -- DELETE /api/artists/:id
-  | DeleteArtist Int
-  | RemoveArtist (Maybe Int)
-  -- Filtering (e.g. /api/artists?name=...)
-  | ReplaceArtists (Maybe (List Artist))
-  | RequestNextPage
-  | UpdateInputText String
-  | UpdateSearchText String
   | ShowPage Page
   | IndexAction Index.Action
   | PageModule1Action PageModule1.Action
@@ -105,102 +54,7 @@ update action model =
     NoOp ->
       ( model
       , Effects.none
-      )
-
-    ReplaceArtists maybeArtists ->
-      case maybeArtists of
-        Nothing ->
-          ( model
-          , Effects.none
-          )
-
-        Just [] ->
-          -- Empty result set, probably because we reached the last page
-          ( model
-          , Effects.none
-          )
-
-        Just artists ->
-          ( { model
-              | artists = artists
-            }
-          , Effects.none
-          )
-
-    SetArtists maybeArtists ->
-      case maybeArtists of
-        Nothing ->
-          ( model
-          , Effects.none
-          )
-
-        Just [] ->
-          -- Empty result set, probably because we reached the last page
-          ( model
-          , Effects.none
-          )
-
-        Just artists ->
-          ( { model
-              | artists = model.artists ++ artists
-              , nextPage = model.nextPage + 1
-            }
-          , Effects.none
-          )
-
-    SetArtist maybeArtist ->
-      case maybeArtist of
-        Nothing ->
-          ( model
-          , Effects.none
-          )
-
-        Just artist ->
-          ( { model
-              | artists = artist :: model.artists
-              , inputText = ""
-            }
-          , Effects.none
-          )
-
-    CreateArtist artist ->
-      ( model
-      , maybeCreateArtist artist
-      )
-
-    DeleteArtist id ->
-      ( model
-      , maybeDeleteArtist id
-      )
-
-    RemoveArtist maybeId ->
-      case maybeId of
-        Nothing ->
-          ( model
-          , Effects.none
-          )
-
-        Just id ->
-          ( { model
-              | artists = List.filter (\artist -> artist.id /= id ) model.artists
-            }
-          , Effects.none
-          )
-
-    UpdateInputText txt ->
-      ( { model | inputText = txt }
-      , Effects.none
-      )
-
-    UpdateSearchText txt ->
-      ( { model | searchText = txt }
-      , maybeFilterResults { name = txt }
-      )
-
-    RequestNextPage ->
-      ( model
-      , getArtists model.nextPage
-      )
+      )      
 
     ShowPage page ->
       ( { model | currentPage = page }
@@ -209,7 +63,7 @@ update action model =
 
     IndexAction subaction ->
       let
-        (newModel, fx) = Index.update subaction model.index
+        ( newModel, fx ) = Index.update subaction model.index
       in
         ( { model | index = newModel }
         , Effects.map IndexAction fx
@@ -217,7 +71,7 @@ update action model =
 
     PageModule1Action subaction ->
       let
-        (newModel, fx) = PageModule1.update subaction model.pageModule1
+        ( newModel, fx ) = PageModule1.update subaction model.pageModule1
       in
         ( { model | pageModule1 = newModel }
         , Effects.map PageModule1Action fx
@@ -225,7 +79,7 @@ update action model =
 
     PageModule2Action subaction ->
       let
-        (newModel, fx) = PageModule2.update subaction model.pageModule2
+        ( newModel, fx ) = PageModule2.update subaction model.pageModule2
       in
         ( { model | pageModule2 = newModel }
         , Effects.map PageModule2Action fx
@@ -248,14 +102,6 @@ update action model =
 
 
 
-getArtists : Int -> Effects Action
-getArtists page =
-  get page
-  |> Task.toMaybe
-  |> Task.map SetArtists
-  |> Effects.task
-
-
 -- SIGNALS
 
 app =
@@ -266,9 +112,12 @@ app =
     , inputs = inputs
     }
 
-init : (Model, Effects Action)
+
+-- before the refactoring was: (getArtists initialModel.nextPage)
+init : ( Model, Effects Action )
 init =
-  (,) initialModel (getArtists initialModel.nextPage)
+  ( initialModel, Effects.none )
+  --( initialModel, (Index.getArtists initialModel.index.nextPage) )
 
 
 main : Signal Html
@@ -304,10 +153,11 @@ messages =
 
 inputs : List (Signal Action)
 inputs =
-  let
-    scroll = Signal.map (always RequestNextPage) scrolledToBottom
-  in
-    [scroll, messages.signal]
+  [messages.signal]
+  --let
+  --  scroll = Signal.map (always <| IndexAction Index.RequestNextPage) scrolledToBottom
+  --in
+  --  [scroll, messages.signal]
 
 
 -- ROUTES
@@ -356,7 +206,8 @@ location2action list =
         ( ShowPage PageModule2 ) :: List.map PageModule2Action ( PageModule2.location2action rest )
 
       _ ->
-          [(UpdateInputText "showing the 404 error page")]
+        [NoOp]
+        --[IndexAction (Index.UpdateInputText "404 ERROR PAGE")]
 
       --first :: rest ->
       --    case first of
@@ -365,95 +216,6 @@ location2action list =
 
       --        "page-tag-2" ->
       --            List.map ShowPage (PageModule2.location2action rest)
-
-
-get : Int -> Task Http.Error (List Artist)
-get page =
-  Http.get decoder ("/api/artists/?page=" ++ toString page)
-
-
-postArtist : { a | name : String } -> Task Http.Error ArtistPayload
-postArtist artist =
-  let
-    url = "http://localhost:4000/api/artists"
-    body =
-      Http.multipart
-        [ Http.stringData "artist[name]" artist.name ]
-  in
-    Http.post payloadDecoder url body
-
-
-maybeCreateArtist : { a | name : String } -> Effects Action
-maybeCreateArtist artist =
-  let
-    extractArtistFromData {data} = data
-  in
-  postArtist artist
-  |> Task.map extractArtistFromData
-  |> Task.toMaybe
-  |> Task.map SetArtist
-  |> Effects.task
-
-
-deleteArtist : Int -> Task Http.Error Int
-deleteArtist id =
-  let
-    settings = Http.defaultSettings
-
-    request =
-      { verb = "DELETE"
-      , headers = []
-      , url = "http://localhost:4000/api/artists/" ++ toString id
-      , body = Http.empty
-      }
-
-    response = Http.send settings request
-  in
-    Task.mapError promoteError response `andThen` handleDeleteResponse id
-
-
-promoteError : Http.RawError -> Http.Error
-promoteError rawError =
-  case rawError of
-    Http.RawTimeout -> Http.Timeout
-    Http.RawNetworkError -> Http.NetworkError
-
-
-handleDeleteResponse : Int -> Http.Response -> Task Http.Error Int
-handleDeleteResponse id response =
-  if 200 <= response.status && response.status < 300 then
-
-      case response.value of
-        Http.Text str ->
-            Task.succeed id
-
-        _ ->
-            Task.fail (Http.UnexpectedPayload "Response body is a blob, expecting a string.")
-
-  else
-
-      Task.fail (Http.BadResponse response.status response.statusText)
-
-
-maybeDeleteArtist : Int -> Effects Action
-maybeDeleteArtist id =
-  deleteArtist id
-  |> Task.toMaybe
-  |> Task.map RemoveArtist
-  |> Effects.task
-
-
-getFilteredResults : { a | name : String } -> Task Http.Error (List Artist)
-getFilteredResults artist =
-  Http.get decoder ("/api/artists/?name=" ++ artist.name)
-
-
-maybeFilterResults : { a | name : String } -> Effects Action
-maybeFilterResults artist =
-  getFilteredResults artist
-  |> Task.toMaybe
-  |> Task.map ReplaceArtists
-  |> Effects.task
 
 
 -- VIEW
