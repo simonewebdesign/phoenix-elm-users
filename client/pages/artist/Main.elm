@@ -23,12 +23,6 @@ type alias Model =
   , pageModule2 : PageModule2.Model
   }
 
-type Page
-  = Index
-  | PageModule1
-  | PageModule2
-
-
 initialModel : Model
 initialModel =
   { currentPage = Index
@@ -36,6 +30,11 @@ initialModel =
   , pageModule1 = fst PageModule1.init
   , pageModule2 = fst PageModule2.init
   }
+
+type Page
+  = Index
+  | PageModule1
+  | PageModule2
 
 
 -- UPDATE
@@ -85,22 +84,6 @@ update action model =
         , Effects.map PageModule2Action fx
         )
 
-    --IndexAction subaction ->
-    --  ( { model | index = Index.update subaction model.index }
-    --  , Effects.none
-    --  )
-
-    --PageModule1Action subaction ->
-    --  ( { model | pageModule1 = PageModule1.update subaction model.pageModule1 }
-    --  , Effects.none
-    --  )
-
-    --PageModule2Action subaction ->
-    --  ( { model | pageModule2 = PageModule2.update subaction model.pageModule2 }
-    --  , Effects.none
-    --  )
-
-
 
 -- SIGNALS
 
@@ -113,7 +96,6 @@ app =
     }
 
 
--- before the refactoring was: (getArtists initialModel.nextPage)
 init : ( Model, Effects Action )
 init =
   let
@@ -123,7 +105,6 @@ init =
         ]
   in
     ( initialModel, effects )
-    --( initialModel, (Index.getArtists initialModel.index.nextPage) )
 
 
 main : Signal Html
@@ -167,9 +148,6 @@ inputs =
 
 -- ROUTES
 
-
--- Routing
-
 -- So, the main thing we'll do here to start with is modify the hash to
 -- indicate which example we're currently looking at. Note that we don't have
 -- to check whether it has changed, because the elm-route-hash module will
@@ -212,15 +190,6 @@ location2action list =
 
       _ ->
         [NoOp]
-        --[IndexAction (Index.UpdateInputText "404 ERROR PAGE")]
-
-      --first :: rest ->
-      --    case first of
-      --        "page-tag-1" ->
-      --            List.map ShowPage (PageModule1.location2action rest)
-
-      --        "page-tag-2" ->
-      --            List.map ShowPage (PageModule2.location2action rest)
 
 
 -- VIEW
