@@ -28,7 +28,11 @@ update action model =
 
 
 view address model =
-  h1 [] [ text "Hello World from PageModule1" ]
+  h1 []
+  [ text "Hello World from PageModule2!"
+  , a [ Attr.href "#listing" ] [ text "Go back to user listing" ]
+  , a [ Attr.href "#page-tag-1" ] [ text "Go to module 1" ]
+  ]
 
 
 -- For delta2update, we provide our state as the value for the URL

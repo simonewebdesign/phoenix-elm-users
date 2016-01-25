@@ -42,7 +42,11 @@ view address model =
       ]
   in
     div [Attr.class "container"]
-    [ filterForm address model
+    [ div []
+      [ a [ Attr.href "#page-tag-1" ] [ text "go to page tag 1" ]
+      , a [ Attr.href "#page-tag-2" ] [ text "go to page tag 2" ]
+      ]
+    , filterForm address model
     , entryForm address model
     , table [Attr.class "table table-striped table-bordered"]
       [ thead [] [tr [] (List.map th' ["ID", "Name", "Actions"])]
