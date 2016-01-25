@@ -9,7 +9,7 @@ import Effects exposing (Effects, Never)
 import RouteHash as Router exposing (HashUpdate)
 
 -- PAGES
-import Index 
+import Index
 import PageModule1
 import PageModule2
 
@@ -32,7 +32,7 @@ type Page
 initialModel : Model
 initialModel =
   { currentPage = Index
-  , index = fst Index.init
+  , index = Index.initialModel
   , pageModule1 = fst PageModule1.init
   , pageModule2 = fst PageModule2.init
   }
@@ -54,7 +54,7 @@ update action model =
     NoOp ->
       ( model
       , Effects.none
-      )      
+      )
 
     ShowPage page ->
       ( { model | currentPage = page }
@@ -116,8 +116,14 @@ app =
 -- before the refactoring was: (getArtists initialModel.nextPage)
 init : ( Model, Effects Action )
 init =
-  ( initialModel, Effects.none )
-  --( initialModel, (Index.getArtists initialModel.index.nextPage) )
+  let
+    effects =
+      Effects.batch
+        [ Effects.map IndexAction <| snd Index.init
+        ]
+  in
+    ( initialModel, effects )
+    --( initialModel, (Index.getArtists initialModel.index.nextPage) )
 
 
 main : Signal Html
@@ -133,12 +139,12 @@ port tasks =
 port routeTasks : Signal (Task () ())
 port routeTasks =
   Router.start
-      { prefix = Router.defaultPrefix
-      , models = app.model
-      , delta2update = delta2update
-      , address = messages.address
-      , location2action = location2action
-      }
+    { prefix = Router.defaultPrefix
+    , models = app.model
+    , delta2update = delta2update
+    , address = messages.address
+    , location2action = location2action
+    }
 
 
 {- In your `Main` module, create a mailbox for your action type ... something
@@ -153,11 +159,10 @@ messages =
 
 inputs : List (Signal Action)
 inputs =
-  [messages.signal]
-  --let
-  --  scroll = Signal.map (always <| IndexAction Index.RequestNextPage) scrolledToBottom
-  --in
-  --  [scroll, messages.signal]
+  let
+    scroll = Signal.map (always <| IndexAction Index.RequestNextPage) scrolledToBottom
+  in
+    [scroll, messages.signal]
 
 
 -- ROUTES
@@ -198,10 +203,10 @@ location2action list =
       -- interpreted.
       "listing" :: rest ->
         ( ShowPage Index ) :: List.map IndexAction ( Index.location2action rest )
-      
+
       "page-tag-1" :: rest ->
         ( ShowPage PageModule1 ) :: List.map PageModule1Action ( PageModule1.location2action rest )
-        
+
       "page-tag-2" :: rest ->
         ( ShowPage PageModule2 ) :: List.map PageModule2Action ( PageModule2.location2action rest )
 

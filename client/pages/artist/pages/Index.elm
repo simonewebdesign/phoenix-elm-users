@@ -71,7 +71,7 @@ payloadDecoder =
 
 init : ( Model, Effects Action )
 init =
-  ( initialModel, Effects.none )
+  ( initialModel, (getArtists initialModel.nextPage) )
 
 
 update : Action -> Model -> ( Model, Effects Action )
@@ -186,11 +186,11 @@ view address model =
     tr' artist =
       tr []
       [ 
-      --td [] [text <| toString artist.id]
-      --, td [] [text <| artist.name]
-      --, td []
-        --[ button [Attr.type' "button", Attr.class "btn btn-danger", onClick address (DeleteArtist artist.id)] [text "Delete"]
-        --]
+      td [] [text <| toString artist.id]
+      , td [] [text <| artist.name]
+      , td []
+        [ button [Attr.type' "button", Attr.class "btn btn-danger", onClick address (DeleteArtist artist.id)] [text "Delete"]
+        ]
       ]
   in
     div [Attr.class "container"]
@@ -202,7 +202,7 @@ view address model =
     , entryForm address model
     , table [Attr.class "table table-striped table-bordered"]
       [ thead [] [tr [] (List.map th' ["ID", "Name", "Actions"])]
-      --, tbody [] (List.map tr' model.artists)
+      , tbody [] (List.map tr' model.artists)
       ]
     ]
 
