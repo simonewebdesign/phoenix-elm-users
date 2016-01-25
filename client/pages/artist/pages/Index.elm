@@ -213,12 +213,12 @@ entryForm address model =
   [ input
     [ Attr.type' "text"
     , Attr.placeholder "Artist name..."
-    --, Attr.value model.inputText
+    , Attr.value model.inputText
     , Attr.name "artist"
     , Attr.autofocus True
-    --, onInput address UpdateInputText
+    , onInput address UpdateInputText
     ][]
-  --, button [ Attr.class "add", onClick address (CreateArtist { name = model.inputText }) ] [ text "Add" ]
+  , button [ Attr.class "add", onClick address (CreateArtist { name = model.inputText }) ] [ text "Add" ]
   , h4 [] [text (toString model)]
   ]
 
@@ -229,8 +229,8 @@ filterForm address model =
   [ input
       [ Attr.type' "text"
       , Attr.name "search"
-      --, Attr.value model.searchText
-      --, onInput address UpdateSearchText
+      , Attr.value model.searchText
+      , onInput address UpdateSearchText
       ][]
   , span [ Attr.class "magnifying-glass" ] [ text "🔍" ]
   ]
